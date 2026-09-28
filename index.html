@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>운명의 제비뽑기 | 이름 입력</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: linear-gradient(135deg, #ffe29f 0%, #ffa99f 50%, #ff719a 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+      color: #2d2a32;
+    }
+    .card {
+      background: #fff;
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px;
+      padding: 28px 24px 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+      height: fit-content;
+    }
+    h1 { text-align: center; font-size: 28px; margin-bottom: 4px; }
+    .sub { text-align: center; color: #8a8593; font-size: 14px; margin-bottom: 22px; }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+    .tab {
+      flex: 1; padding: 10px; border: 2px solid #eee; background: #faf9fb;
+      border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; color: #8a8593;
+    }
+    .tab.active { border-color: #ff719a; background: #fff0f5; color: #e0457a; }
+
+    .row { display: flex; gap: 8px; }
+    input[type="text"], select {
+      flex: 1; padding: 12px 14px; border: 2px solid #eee; border-radius: 12px;
+      font-size: 16px; outline: none; font-family: inherit;
+    }
+    input[type="text"]:focus, select:focus { border-color: #ff719a; }
+    button { font-family: inherit; cursor: pointer; }
+    .btn-add {
+      padding: 0 18px; border: none; border-radius: 12px; background: #2d2a32;
+      color: #fff; font-size: 15px; font-weight: 700;
+    }
+    .hint { font-size: 12px; color: #a29dab; margin: 8px 2px 14px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 10px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px; background: #fff0f5; color: #c93a6c;
+      padding: 7px 8px 7px 14px; border-radius: 999px; font-size: 14px; font-weight: 600;
+      animation: pop 0.25s ease;
+    }
+    .chip button {
+      border: none; background: #ffd3e2; color: #c93a6c; width: 20px; height: 20px;
+      border-radius: 50%; font-size: 12px; line-height: 20px; padding: 0;
+    }
+    .empty { color: #b9b4c1; font-size: 14px; padding: 8px 2px; }
+
+    .tools { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tool {
+      flex: 1; padding: 9px; border: 1px dashed #d8d3df; background: #fff; border-radius: 10px;
+      font-size: 13px; color: #8a8593;
+    }
+    .tool:hover { background: #faf9fb; }
+
+    .team-opt { display: none; align-items: center; gap: 10px; margin-bottom: 16px; font-size: 15px; font-weight: 600; }
+    .team-opt.show { display: flex; }
+    .team-opt select { flex: 0 0 110px; padding: 9px 12px; }
+
+    .btn-draw {
+      width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 19px; font-weight: 800;
+      color: #fff; background: linear-gradient(90deg, #ff719a, #ffa99f);
+      box-shadow: 0 8px 20px rgba(255, 113, 154, 0.4); transition: transform 0.1s;
+    }
+    .btn-draw:active { transform: scale(0.98); }
+
+    .msg { text-align: center; color: #e0457a; font-size: 14px; min-height: 20px; margin-top: 10px; }
+
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>🎲 운명의 제비뽑기</h1>
+    <p class="sub">이름을 넣고 뽑기를 누르면 결과 화면으로 이동해요</p>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-order" onclick="setMode('order')">🎤 발표 순서</button>
+      <button class="tab" id="tab-team" onclick="setMode('team')">👥 팀 나누기</button>
+    </div>
+
+    <div class="row">
+      <input type="text" id="nameInput" placeholder="이름 입력 후 Enter" maxlength="12" autocomplete="off">
+      <button class="btn-add" onclick="addName()">추가</button>
+    </div>
+    <p class="hint">쉼표(,)로 여러 명을 한 번에 넣을 수도 있어요. 예) 민지, 철수, 영희</p>
+
+    <div class="chips" id="chips"></div>
+
+    <div class="tools">
+      <button class="tool" onclick="fillExample()">예시 채우기</button>
+      <button class="tool" onclick="clearAll()">전체 지우기</button>
+    </div>
+
+    <div class="team-opt" id="teamOpt">
+      <label for="teamCount">팀 개수</label>
+      <select id="teamCount">
+        <option>2</option><option>3</option><option>4</option><option>5</option><option>6</option>
+      </select>
+    </div>
+
+    <button class="btn-draw" onclick="goToResult()">🎰 뽑으러 가기 ▶</button>
+    <p class="msg" id="msg"></p>
+  </main>
+
+  <script>
+    let names = [];
+    let mode = 'order';
+    const $ = (id) => document.getElementById(id);
+
+    function setMode(m) {
+      mode = m;
+      $('tab-order').classList.toggle('active', m === 'order');
+      $('tab-team').classList.toggle('active', m === 'team');
+      $('teamOpt').classList.toggle('show', m === 'team');
+      $('msg').textContent = '';
+    }
+
+    function addName() {
+      const input = $('nameInput');
+      const parts = input.value.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+      let dup = false;
+      parts.forEach(p => {
+        if (names.includes(p)) { dup = true; } else { names.push(p); }
+      });
+      input.value = '';
+      input.focus();
+      $('msg').textContent = dup ? '이미 있는 이름은 빼고 추가했어요!' : '';
+      renderChips();
+    }
+
+    function removeName(i) {
+      names.splice(i, 1);
+      renderChips();
+    }
+
+    function renderChips() {
+      const box = $('chips');
+      box.innerHTML = '';
+      if (names.length === 0) {
+        box.innerHTML = '<span class="empty">아직 아무도 없어요. 이름을 추가해 보세요!</span>';
+        return;
+      }
+      names.forEach((n, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        const label = document.createElement('span');
+        label.textContent = n;
+        const x = document.createElement('button');
+        x.textContent = '✕';
+        x.setAttribute('aria-label', n + ' 삭제');
+        x.onclick = () => removeName(i);
+        chip.append(label, x);
+        box.appendChild(chip);
+      });
+    }
+
+    function fillExample() {
+      names = ['민지', '철수', '영희', '지훈', '수빈', '도윤'];
+      $('msg').textContent = '';
+      renderChips();
+    }
+
+    function clearAll() {
+      names = [];
+      $('msg').textContent = '';
+      renderChips();
+    }
+
+    // 결과 페이지(result.html)로 데이터를 넘길 때는 서버 없이
+    // 이 브라우저 탭 안에서만 잠깐 기억되는 sessionStorage를 쓴다. (API, 서버 없음)
+    function goToResult() {
+      const teamCount = Number($('teamCount').value);
+      if (names.length < 2) {
+        $('msg').textContent = '이름을 2명 이상 넣어주세요!';
+        return;
+      }
+      if (mode === 'team' && names.length < teamCount) {
+        $('msg').textContent = '팀 수보다 사람이 적어요. 팀 개수를 줄여주세요!';
+        return;
+      }
+      sessionStorage.setItem('draw-names', JSON.stringify(names));
+      sessionStorage.setItem('draw-mode', mode);
+      sessionStorage.setItem('draw-teamCount', String(teamCount));
+      location.href = 'result.html';
+    }
+
+    $('nameInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addName();
+    });
+
+    renderChips();
+  </script>
+</body>
+</html>

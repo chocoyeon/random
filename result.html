@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>운명의 제비뽑기 | 결과</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: linear-gradient(135deg, #ffe29f 0%, #ffa99f 50%, #ff719a 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 32px 16px;
+      color: #2d2a32;
+    }
+    .card {
+      background: #fff;
+      width: 100%;
+      max-width: 480px;
+      border-radius: 24px;
+      padding: 28px 24px 32px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+      height: fit-content;
+    }
+    h1 { text-align: center; font-size: 26px; margin-bottom: 4px; }
+    .sub { text-align: center; color: #8a8593; font-size: 14px; margin-bottom: 22px; }
+
+    .roller {
+      text-align: center; font-size: 34px; font-weight: 800; padding: 26px 10px;
+      background: #2d2a32; color: #ffe29f; border-radius: 16px; letter-spacing: 1px;
+    }
+    .result h2 { font-size: 16px; margin-bottom: 10px; text-align: center; color: #8a8593; }
+    .order-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .order-item {
+      display: flex; align-items: center; gap: 14px; background: #faf9fb; border-radius: 14px;
+      padding: 12px 16px; font-size: 18px; font-weight: 700; animation: slide 0.4s ease;
+    }
+    .order-item .num {
+      width: 34px; height: 34px; border-radius: 50%; background: #ff719a; color: #fff;
+      display: flex; align-items: center; justify-content: center; font-size: 16px; flex: none;
+    }
+    .order-item.first { background: #fff6d6; }
+    .order-item.first .num { background: #ffb400; }
+    .order-item .tag { margin-left: auto; font-size: 12px; color: #ffb400; }
+
+    .team {
+      background: #faf9fb; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+      animation: slide 0.4s ease;
+    }
+    .team h3 { font-size: 15px; color: #e0457a; margin-bottom: 8px; }
+    .team .members { display: flex; flex-wrap: wrap; gap: 6px; }
+    .team .members span { background: #fff; padding: 6px 12px; border-radius: 999px; font-size: 15px; font-weight: 600; }
+
+    .actions { display: flex; gap: 8px; margin-top: 18px; }
+    .btn {
+      flex: 1; padding: 13px; border-radius: 12px; font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer;
+    }
+    .btn-primary {
+      border: none; color: #fff; background: linear-gradient(90deg, #ff719a, #ffa99f);
+    }
+    .btn-secondary { border: 2px solid #eee; background: #fff; color: #8a8593; }
+
+    .empty { text-align: center; color: #a29dab; padding: 40px 10px; line-height: 1.7; }
+    .empty a { color: #e0457a; font-weight: 700; }
+
+    .ai-box {
+      margin-top: 16px; padding: 16px; border-radius: 14px; background: #f1efff; color: #4a3f9f;
+      font-size: 14px; font-weight: 600; line-height: 1.8; animation: slide 0.4s ease;
+    }
+    .ai-box .ai-title { font-size: 12px; color: #8a80c9; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.5px; }
+    .ai-line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; }
+    .ai-line .who { color: #2d2a32; }
+
+    @keyframes slide { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes shake { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-1.5deg); } 75% { transform: rotate(1.5deg); } }
+    .shaking { animation: shake 0.15s infinite; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>🎲 운명의 제비뽑기</h1>
+    <p class="sub" id="subText">결과를 뽑는 중이에요...</p>
+    <div class="result" id="result"></div>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let timers = [];
+
+    // 1번 페이지(index.html)에서 sessionStorage에 담아 넘겨준 데이터를 읽는다. (서버, API 없음)
+    const names = JSON.parse(sessionStorage.getItem('draw-names') || '[]');
+    const mode = sessionStorage.getItem('draw-mode') || 'order';
+    const teamCount = Number(sessionStorage.getItem('draw-teamCount') || '2');
+
+    if (!Array.isArray(names) || names.length < 2) {
+      $('subText').textContent = '';
+      $('result').innerHTML =
+        '<p class="empty">불러올 이름이 없어요.<br><a href="index.html">← 이름 입력 화면으로 가기</a></p>';
+    } else {
+      $('subText').textContent = mode === 'order' ? '누가 몇 번째일까요?' : '어떤 팀이 될까요?';
+      startDraw();
+    }
+
+    // 피셔-예이츠 셔플: 모든 순서가 같은 확률로 나오는 공정한 섞기
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // ---- 여기부터 "AI가 하는 일" 부분 ----
+    // 진짜 Gemini API를 부르는 대신, 이름/순서 데이터를 규칙에 따라 분석해서
+    // 그때그때 다른 코멘트를 만들어내는 간단한 로직이다. 서버나 키가 필요 없다.
+    const ORDER_COMMENTS = [
+      '{name}님, 오늘의 스타트를 시원하게 끊어주세요! 🔥',
+      '{name}님은 완벽한 준비 시간을 확보했어요, 여유 있게 가요 ⏳',
+      '{name}님 차례엔 다들 집중력이 최고조일 거예요 👀',
+      '{name}님, 앞 순서를 참고해서 더 멋지게 준비해봐요 📝',
+      '{name}님은 중간에서 분위기를 살리는 역할이에요 🎶',
+      '{name}님, 긴장 풀고 딱 준비한 만큼만 보여주면 충분해요 🌿',
+      '{name}님은 마무리를 책임지는 소중한 순서예요 🎬',
+      '{name}님, 마지막 힘까지 응원 보낼게요 📣',
+      '{name}님, 오늘 컨디션 최고라는 소문이 있어요 😎',
+      '{name}님은 침착함으로 승부하는 타입 같아요 🧘',
+    ];
+    const TEAM_NAME_POOL = [
+      '든든한 감자팀', '반짝이는 별똥별', '전력질주 치타조',
+      '느긋한 나무늘보', '아이디어 뱅크', '팀워크 최강조',
+      '오늘만 사는 우리', '조용한 실력파', '텐션 만렙조',
+      '갓생 프로젝트', '엉뚱발랄 스쿼드', '차분한 완벽주의',
+    ];
+
+    // 뽑힌 인원 수만큼 코멘트/팀이름을 "중복 없이" 섞어서 나눠준다.
+    function pickUnique(pool, count) {
+      const picked = [];
+      let bag = shuffle(pool);
+      while (picked.length < count) {
+        if (bag.length === 0) bag = shuffle(pool);
+        picked.push(bag.pop());
+      }
+      return picked;
+    }
+
+    function renderAiBox(title, lines) {
+      const box = document.createElement('div');
+      box.className = 'ai-box';
+      const rows = lines.map(l =>
+        '<div class="ai-line"><span class="who">' + escapeHtml(l.who) + '</span><span>' + escapeHtml(l.text) + '</span></div>'
+      ).join('');
+      box.innerHTML = '<div class="ai-title">' + title + '</div>' + rows;
+      $('result').appendChild(box);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+    // ---- 여기까지 "AI가 하는 일" 부분 ----
+
+    function startDraw() {
+      timers.forEach(clearTimeout);
+      timers = [];
+
+      const result = $('result');
+      result.innerHTML = '<div class="roller shaking" id="roller">?</div>';
+      const roller = $('roller');
+
+      const spin = setInterval(() => {
+        roller.textContent = names[Math.floor(Math.random() * names.length)];
+      }, 70);
+
+      timers.push(setTimeout(() => {
+        clearInterval(spin);
+        const shuffled = shuffle(names);
+        if (mode === 'order') showOrder(shuffled);
+        else showTeams(shuffled, teamCount);
+      }, 1200));
+    }
+
+    function showOrder(list) {
+      const result = $('result');
+      result.innerHTML = '<h2>🎉 발표 순서가 정해졌어요!</h2>';
+      const ol = document.createElement('ol');
+      ol.className = 'order-list';
+      result.appendChild(ol);
+
+      list.forEach((name, i) => {
+        timers.push(setTimeout(() => {
+          const li = document.createElement('li');
+          li.className = 'order-item' + (i === 0 ? ' first' : '');
+          const num = document.createElement('span');
+          num.className = 'num';
+          num.textContent = i + 1;
+          const label = document.createElement('span');
+          label.textContent = name;
+          li.append(num, label);
+          if (i === 0) {
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = '👑 첫 번째!';
+            li.appendChild(tag);
+          }
+          ol.appendChild(li);
+          if (i === list.length - 1) {
+            const comments = pickUnique(ORDER_COMMENTS, list.length);
+            renderAiBox('🤖 AI 맞춤 응원 코멘트', list.map((name, idx) => ({
+              who: (idx + 1) + '. ' + name,
+              text: comments[idx].replace('{name}', name),
+            })));
+            addActions();
+          }
+        }, i * 400));
+      });
+    }
+
+    function showTeams(list, count) {
+      const result = $('result');
+      result.innerHTML = '<h2>🎉 팀이 정해졌어요!</h2>';
+      const teams = Array.from({ length: count }, () => []);
+      list.forEach((name, i) => teams[i % count].push(name));
+
+      teams.forEach((members, t) => {
+        timers.push(setTimeout(() => {
+          const div = document.createElement('div');
+          div.className = 'team';
+          const h3 = document.createElement('h3');
+          h3.textContent = (t + 1) + '팀 (' + members.length + '명)';
+          const wrap = document.createElement('div');
+          wrap.className = 'members';
+          members.forEach(m => {
+            const s = document.createElement('span');
+            s.textContent = m;
+            wrap.appendChild(s);
+          });
+          div.append(h3, wrap);
+          result.appendChild(div);
+          if (t === teams.length - 1) {
+            const teamNames = pickUnique(TEAM_NAME_POOL, teams.length);
+            renderAiBox('🤖 AI 추천 팀 이름', teams.map((members, idx) => ({
+              who: (idx + 1) + '팀',
+              text: teamNames[idx],
+            })));
+            addActions();
+          }
+        }, t * 450));
+      });
+    }
+
+    function addActions() {
+      const wrap = document.createElement('div');
+      wrap.className = 'actions';
+      wrap.innerHTML =
+        '<button class="btn btn-secondary" onclick="startDraw()">🔄 다시 뽑기</button>' +
+        '<a class="btn btn-primary" style="text-align:center; text-decoration:none; display:flex; align-items:center; justify-content:center;" href="index.html">👥 이름 다시 입력</a>';
+      $('result').appendChild(wrap);
+    }
+  </script>
+</body>
+</html>
